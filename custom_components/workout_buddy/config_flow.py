@@ -249,7 +249,7 @@ class SourceSubentryFlow(ConfigSubentryFlow):
                 fields[vol.Optional(f"map_{field}")] = TextSelector()
             fields[vol.Required(CONF_DURATION_UNIT, default="min")] = _select(["s", "min", "h"], CONF_DURATION_UNIT)
             fields[vol.Required(CONF_DISTANCE_UNIT, default="km")] = _select(["m", "km", "mi"], CONF_DISTANCE_UNIT)
-            fields[vol.Required(CONF_ENERGY_UNIT, default="kcal")] = _select(["kcal", "kJ"], CONF_ENERGY_UNIT)
+            fields[vol.Required(CONF_ENERGY_UNIT, default="kcal")] = _select(["kcal", "kj"], CONF_ENERGY_UNIT)
         return self.async_show_form(
             step_id=step_id, data_schema=vol.Schema(fields), errors=errors
         )

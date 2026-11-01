@@ -185,7 +185,7 @@
     "energy_unit": {
       "options": {
         "kcal": "kcal",
-        "kJ": "kJ"
+        "kj": "kJ"
       }
     }
   },
