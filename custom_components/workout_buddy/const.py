@@ -16,6 +16,7 @@ CONF_COMPARE_AVG = "compare_average"
 CONF_DAILY_MODE = "daily_mode"
 CONF_JOINT_TIME = "joint_time"
 CONF_JOINT_DEADLINE = "joint_deadline"
+CONF_SEND_IMAGES = "send_images"
 
 DEFAULT_SEND_SERVICE = "script.whatsapp_melding"
 DEFAULT_DELAY = 60

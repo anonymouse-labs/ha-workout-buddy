@@ -46,6 +46,7 @@ from .const import (
     CONF_JOINT_TIME,
     CONF_PERSON,
     CONF_RECIPIENT,
+    CONF_SEND_IMAGES,
     CONF_SEND_SERVICE,
     CONF_SOURCE_TYPE,
     DAILY_JOINT,
@@ -94,6 +95,7 @@ def _options_schema(d: Mapping[str, Any]) -> vol.Schema:
             vol.Required(CONF_HISTORY, default=d.get(CONF_HISTORY, DEFAULT_HISTORY)): NumberSelector(
                 NumberSelectorConfig(min=5, max=200, step=1)
             ),
+            vol.Required(CONF_SEND_IMAGES, default=d.get(CONF_SEND_IMAGES, False)): BooleanSelector(),
             vol.Required(CONF_COMPARE_AVG, default=d.get(CONF_COMPARE_AVG, False)): BooleanSelector(),
             vol.Required(CONF_DAILY_MODE, default=d.get(CONF_DAILY_MODE, DAILY_PER_PERSON)): _select(
                 [DAILY_PER_PERSON, DAILY_JOINT, DAILY_JOINT_WAIT], CONF_DAILY_MODE

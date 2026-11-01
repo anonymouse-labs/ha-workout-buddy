@@ -79,6 +79,18 @@ Vorige keer: +1,2 km, +8 min, tempo 20 s/km sneller, gem. hartslag -3 bpm
 
 (Waarden zijn een illustratie van de opmaak.) Hartslag wordt alleen als verschil getoond, nooit beoordeeld. De taal van de berichten volgt de taal van Home Assistant: Engels bij `en`, anders Nederlands.
 
+### Grafiek als afbeelding
+
+Zet **Stuur een grafiek als afbeelding** aan in de opties. Bij elke workout komt er een PNG met staafjes van de laatste 6 workouts van hetzelfde type (afstand, snelheid, hartslag), waarbij de nieuwe groen is. Het dagoverzicht krijgt een PNG waarin de personen naast elkaar staan (stappen, afstand, hartslag, rusthartslag, slaap). Dat laatste alleen bij een gezamenlijk bericht of als je het voor iedereen verstuurt.
+
+De afbeeldingen komen in `/config/www/workout_buddy/` en worden steeds overschreven. Ze worden meegestuurd als:
+
+- `whatsapp_notifier.send_message`: veld `image` (vereist ha-whatsapp-notifier met afbeeldingen, bridge-add-on 0.3.0 of nieuwer);
+- een script: veld `afbeelding` (pad), naast `emoji`, `kop`, `tekst` en `voetnoot`. Je script moet het zelf doorsturen;
+- andere kanalen: alleen tekst.
+
+Mislukt het tekenen, dan gaat het bericht gewoon als tekst. Pillow zit al in Home Assistant.
+
 ### Entiteiten en services
 
 Per persoon: sensor **Laatste workout** (state is het type, attributen zijn de velden, `key` en `vs_previous`), sensor **Laatste bericht verstuurd** en knop **Stuur dagoverzicht nu**.
@@ -140,6 +152,10 @@ A failed send never marks a workout as sent. It is retried every 15 minutes, 3 a
 Output is always minutes, km, kcal and bpm. `unknown`, `unavailable`, `NaN` and empty values are ignored; duplicates (same type and start) are sent once. Not sure which attributes your app exposes? Call `workout_buddy.dump_source`. The attribute names of third-party apps are not assumed; they are configurable.
 
 The sensor and daily-sensor tables above list the known sources per platform. Messages are in Dutch, or English when Home Assistant's language is `en`.
+
+### Chart image
+
+Turn on **Send a chart image** in the options. Each workout message gets a PNG with bars for the last 6 workouts of the same type (distance, speed, heart rate), the new one in green. The daily overview gets a PNG with people side by side. Images are written to `/config/www/workout_buddy/` and overwritten each time. They go to `whatsapp_notifier.send_message` as `image` (needs ha-whatsapp-notifier with image support) and to scripts as `afbeelding`; other channels get text only.
 
 ### Licentie / License
 

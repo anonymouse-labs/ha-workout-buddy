@@ -5,9 +5,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
+import os
 from functools import partial
 import logging
 from typing import Any
+from collections.abc import Callable
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, State, callback
@@ -18,8 +20,9 @@ from homeassistant.helpers.event import (
     async_track_time_change,
     async_track_time_interval,
 )
-from homeassistant.util import dt as dt_util
+from homeassistant.util import dt as dt_util, slugify
 
+from .chart import daily_chart, workout_chart
 from .compare import average
 from .const import (
     AVERAGE_OVER,
@@ -36,6 +39,7 @@ from .const import (
     CONF_JOINT_TIME,
     CONF_PERSON,
     CONF_RECIPIENT,
+    CONF_SEND_IMAGES,
     CONF_SEND_SERVICE,
     CONF_SOURCE_TYPE,
     DAILY_JOINT,
@@ -66,6 +70,7 @@ from .parser import (
     clean,
     convert,
     from_mapping,
+    parse_dt,
     parse_quantity,
     parse_text,
 )
@@ -75,6 +80,7 @@ _LOGGER = logging.getLogger(__name__)
 
 EMOJI_DAILY = "📊"
 EMOJI_WORKOUT = "🏃"
+CHART_WORKOUTS = 6
 
 
 @dataclass(slots=True)
@@ -109,6 +115,7 @@ class WorkoutBuddy:
         self.recipient: str = (o.get(CONF_RECIPIENT) or "").strip()
         self.delay = int(o.get(CONF_DELAY, DEFAULT_DELAY))
         self.history_size = int(o.get(CONF_HISTORY, DEFAULT_HISTORY))
+        self.send_images: bool = o.get(CONF_SEND_IMAGES, False)
         self.compare_average: bool = o.get(CONF_COMPARE_AVG, False)
         self.daily_mode: str = o.get(CONF_DAILY_MODE, DAILY_PER_PERSON)
         self.joint_time = dt_util.parse_time(o.get(CONF_JOINT_TIME, DEFAULT_JOINT_TIME))
@@ -291,8 +298,34 @@ class WorkoutBuddy:
 
     # -- sending -------------------------------------------------------------
 
-    async def _send(self, emoji: str, title: str, body: str, footer: str = "") -> bool:
-        """Send through the configured channel. Never raises."""
+    async def _chart(self, name: str, build: Callable[[], bytes]) -> str | None:
+        """Render a PNG under /config/www/workout_buddy; None when off, empty or failing."""
+        if not self.send_images:
+            return None
+        path = self.hass.config.path("www", DOMAIN, f"{name}.png")
+
+        def job() -> bool:
+            if not (data := build()):
+                return False
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "wb") as f:
+                f.write(data)
+            return True
+
+        try:
+            return path if await self.hass.async_add_executor_job(job) else None
+        except Exception:  # noqa: BLE001 - a missing chart must not block the text message
+            _LOGGER.warning("Could not draw chart %s, sending text only", name, exc_info=True)
+            return None
+
+    async def _send(
+        self, emoji: str, title: str, body: str, footer: str = "", image: str | None = None
+    ) -> bool:
+        """Send through the configured channel. Never raises.
+
+        The image (a file path) goes to scripts as `afbeelding` and to
+        whatsapp_notifier.send_message as `image`; other channels send text only.
+        """
         domain, _, name = self.send_service.partition(".")
         text = "\n".join(x for x in (f"{emoji} {title}", body, footer) if x)
         recipient = self.recipient
@@ -303,6 +336,8 @@ class WorkoutBuddy:
                 "tekst": body,
                 "voetnoot": footer,
             }
+            if image:
+                data["afbeelding"] = image
         elif self.send_service == "whatsapp_notifier.send_message":
             if not recipient:
                 _LOGGER.error(
@@ -312,6 +347,8 @@ class WorkoutBuddy:
                 )
                 return False
             data = {"message": text, "chat_id": recipient}
+            if image:
+                data["image"] = image
         elif self.send_service == "notify.send_message":
             if not recipient:
                 _LOGGER.error(
@@ -363,7 +400,14 @@ class WorkoutBuddy:
             len(recent),
             self.lang,
         )
-        ok = await self._send(EMOJI_WORKOUT, title, body)
+        entries = [
+            (self._label(r), Workout.from_dict(r["workout"]))
+            for r in [*self.store.previous(person, record), record][-CHART_WORKOUTS:]
+        ]
+        image = await self._chart(
+            f"workout_{slugify(person)}", lambda: workout_chart(title, entries, self.lang)
+        )
+        ok = await self._send(EMOJI_WORKOUT, title, body, image=image)
         if ok:
             record["sent"] = True
             self._record_message(person, f"{title}\n{body}")
@@ -379,6 +423,11 @@ class WorkoutBuddy:
         await self.store.async_save()
         self.notify_entities()
         return ok
+
+    @staticmethod
+    def _label(record: Record) -> str:
+        when = parse_dt(record["workout"].get("start") or record["received"])
+        return dt_util.as_local(when).strftime("%d-%m") if when else ""
 
     async def _retry_unsent(self, _now: datetime | None = None) -> None:
         for person, record in self.store.unsent():
@@ -414,9 +463,16 @@ class WorkoutBuddy:
         )
         if not people:
             return False
-        lines = [daily_line(p.name, self.daily_values(p), self.lang) for p in people]
+        values = {p.name: self.daily_values(p) for p in people}
+        lines = [daily_line(name, vals, self.lang) for name, vals in values.items()]
         title, body = daily_message(lines, self.lang)
-        ok = await self._send(EMOJI_DAILY, title, body)
+        image = None
+        if len(people) > 1:  # a chart is for comparing people
+            day = dt_util.now().strftime("%d-%m")
+            image = await self._chart(
+                "daily", lambda: daily_chart(values, self.lang, day)
+            )
+        ok = await self._send(EMOJI_DAILY, title, body, image=image)
         if ok:
             for p in people:
                 self._record_message(p.name, f"{title}\n{body}")
