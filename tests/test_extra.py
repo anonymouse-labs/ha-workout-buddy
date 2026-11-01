@@ -152,3 +152,19 @@ async def test_synced_today_compares_with_midnight(hass: HomeAssistant) -> None:
     tomorrow = dt_util.start_of_local_day() + timedelta(days=1)
     with patch(f"{COORD}.dt_util.start_of_local_day", return_value=tomorrow):
         assert manager._synced_today() is False
+
+
+async def test_last_workout_sensor_says_no_workout_yet(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+
+    entry = _entry()
+    await _setup(hass, entry)
+    person = entry.runtime_data.persons["Ruub"]
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "sensor", DOMAIN, f"{person.subentry_id}_last_workout"
+    )
+    assert hass.states.get(entity_id).state == "Nog geen workout"
+    async_mock_service(hass, "script", "whatsapp_melding")
+    hass.states.async_set("sensor.w", TEXT1)
+    await hass.async_block_till_done()
+    assert hass.states.get(entity_id).state == "Outdoor Walk"

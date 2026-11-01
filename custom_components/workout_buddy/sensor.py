@@ -13,6 +13,7 @@ from homeassistant.util import dt as dt_util
 from . import WorkoutBuddyConfigEntry
 from .compare import deltas
 from .entity import PersonEntity
+from .messages import STR
 from .parser import Workout
 
 
@@ -40,7 +41,9 @@ class LastWorkoutSensor(PersonEntity, SensorEntity):
     @property
     def native_value(self) -> str | None:
         record = self._record
-        return (record["workout"]["type"] or "Workout") if record else None
+        if record is None:  # "unknown" would look like a broken sensor
+            return STR[self.manager.lang]["no_workout"]
+        return record["workout"]["type"] or STR[self.manager.lang]["default_type"]
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
