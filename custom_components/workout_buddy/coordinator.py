@@ -477,7 +477,7 @@ class WorkoutBuddy:
                     end,
                     [entity_id],
                     None,
-                    True,
+                    False,  # no carried-over state: that is still yesterday's value at midnight
                     False,  # not only significant changes: we want every sample
                     False,
                     True,
@@ -535,7 +535,14 @@ class WorkoutBuddy:
             "active_kcal": ENERGY.get(unit or "kcal", 1),
         }.get(component, 1)
         raw = await self._history(entity_id, midnight, dt_util.utcnow())
-        return [((dt_util.as_local(t) - midnight).total_seconds() / 3600, v * factor) for t, v in raw]
+        series = [((dt_util.as_local(t) - midnight).total_seconds() / 3600, v * factor) for t, v in raw]
+        if component in ("steps", "distance", "active_kcal"):
+            # counters restart at midnight; a sensor that reports late can still hold
+            # yesterday's total first, so keep only what follows the last reset
+            resets = [i for i in range(1, len(series)) if series[i][1] < series[i - 1][1] * 0.5]
+            if resets:
+                series = series[resets[-1] :]
+        return series
 
     @staticmethod
     def _subtitle(record: Record) -> str:

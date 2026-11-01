@@ -132,3 +132,18 @@ async def test_daily_heart_rate_shows_lowest_and_highest(hass: HomeAssistant) ->
         hass.states.async_set("sensor.ruub_hr", "111")  # latest reading must not be shown
         await hass.services.async_call("workout_buddy", "send_daily_summary", {}, blocking=True)
     assert calls[0].data["tekst"] == "Ruub: stappen -, hartslag 61-69 bpm"
+
+
+async def test_day_series_ignores_yesterdays_total(hass: HomeAssistant) -> None:
+    async def fake_history(self, entity_id, start, end):
+        # yesterday's total reported late, then the reset, then today's steps
+        return [(start + timedelta(hours=h), v) for h, v in ((1, 13900.0), (2, 0.0), (3, 300.0))]
+
+    entry = _entry()
+    with patch.object(WorkoutBuddy, "_history", fake_history):
+        await _setup(hass, entry)
+        manager = entry.runtime_data
+        series = await manager._day_series(manager.persons["Ruub"], "steps")
+        heart = await manager._day_series(manager.persons["Ruub"], "heart_rate")
+    assert [v for _, v in series] == [0.0, 300.0]
+    assert len(heart) == 3  # heart rate is not a counter
