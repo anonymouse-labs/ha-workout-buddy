@@ -13,7 +13,10 @@
           "daily_mode": "Dagoverzicht",
           "joint_time": "Tijd gezamenlijk overzicht",
           "joint_deadline": "Uiterlijke tijd (wacht tot iedereen gesynchroniseerd is)",
-          "send_images": "Stuur een grafiek als afbeelding (opgeslagen in /config/www/workout_buddy)"
+          "send_images": "Stuur een grafiek als afbeelding (opgeslagen in /config/www/workout_buddy)",
+          "send_text": "Stuur ook de tekst (uit = alleen de grafiek)",
+          "chart_parts": "Wat komt er in de grafiek",
+          "daily_curves": "Lijngrafieken in het dagoverzicht"
         }
       }
     },
@@ -34,7 +37,10 @@
           "daily_mode": "Dagoverzicht",
           "joint_time": "Tijd gezamenlijk overzicht",
           "joint_deadline": "Uiterlijke tijd (wacht tot iedereen gesynchroniseerd is)",
-          "send_images": "Stuur een grafiek als afbeelding (opgeslagen in /config/www/workout_buddy)"
+          "send_images": "Stuur een grafiek als afbeelding (opgeslagen in /config/www/workout_buddy)",
+          "send_text": "Stuur ook de tekst (uit = alleen de grafiek)",
+          "chart_parts": "Wat komt er in de grafiek",
+          "daily_curves": "Lijngrafieken in het dagoverzicht"
         }
       }
     }
@@ -168,6 +174,21 @@
         "sensor": "Sensor met attributen",
         "event": "Event",
         "text": "Tekst-sensor"
+      }
+    },
+    "chart_parts": {
+      "options": {
+        "numbers": "Kerncijfers",
+        "curves": "Lijngrafieken (hartslag, stappen, ...)",
+        "bars": "Staafjes van de laatste workouts"
+      }
+    },
+    "daily_curves": {
+      "options": {
+        "heart_rate": "Hartslag",
+        "steps": "Stappen",
+        "distance": "Afstand",
+        "active_kcal": "Actieve kcal"
       }
     },
     "duration_unit": {

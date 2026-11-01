@@ -17,6 +17,12 @@ CONF_DAILY_MODE = "daily_mode"
 CONF_JOINT_TIME = "joint_time"
 CONF_JOINT_DEADLINE = "joint_deadline"
 CONF_SEND_IMAGES = "send_images"
+CONF_SEND_TEXT = "send_text"
+CONF_CHART_PARTS = "chart_parts"
+CONF_DAILY_CURVES = "daily_curves"
+CHART_PARTS = ("numbers", "curves", "bars")
+DAILY_CURVES = ("heart_rate", "steps", "distance", "active_kcal")
+DEFAULT_DAILY_CURVES = ["heart_rate"]
 
 DEFAULT_SEND_SERVICE = "script.whatsapp_melding"
 DEFAULT_DELAY = 60

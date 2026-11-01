@@ -97,3 +97,38 @@ async def test_daily_image_with_day_curve(hass: HomeAssistant) -> None:
         await _setup(hass, entry)
         await hass.services.async_call("workout_buddy", "send_daily_summary", {}, blocking=True)
     assert os.path.getsize(calls[0].data["image"]) > 5000
+
+
+async def test_chart_only_without_text(hass: HomeAssistant) -> None:
+    calls = async_mock_service(hass, "whatsapp_notifier", "send_message")
+    entry = _entry(
+        send_service="whatsapp_notifier.send_message",
+        recipient="1@g.us",
+        send_images=True,
+        send_text=False,
+    )
+    await _setup(hass, entry)
+    hass.states.async_set("sensor.ruub_steps", "100")
+    await hass.services.async_call("workout_buddy", "send_daily_summary", {}, blocking=True)
+    assert calls[0].data["message"] == "" and calls[0].data["image"].endswith("daily.png")
+
+
+async def test_text_is_kept_when_the_channel_cannot_send_images(hass: HomeAssistant) -> None:
+    calls = async_mock_service(hass, "notify", "mobile")
+    entry = _entry(send_service="notify.mobile", send_images=True, send_text=False)
+    await _setup(hass, entry)
+    await hass.services.async_call("workout_buddy", "send_daily_summary", {}, blocking=True)
+    assert "Dagoverzicht" in calls[0].data["message"] and "image" not in calls[0].data
+
+
+async def test_daily_heart_rate_shows_lowest_and_highest(hass: HomeAssistant) -> None:
+    async def fake_history(self, entity_id, start, end):
+        return [(start + timedelta(hours=h), 60.0 + h) for h in (1, 5, 9)]
+
+    calls = async_mock_service(hass, "script", "whatsapp_melding")
+    entry = _entry(components=("steps", "heart_rate"))
+    with patch.object(WorkoutBuddy, "_history", fake_history):
+        await _setup(hass, entry)
+        hass.states.async_set("sensor.ruub_hr", "111")  # latest reading must not be shown
+        await hass.services.async_call("workout_buddy", "send_daily_summary", {}, blocking=True)
+    assert calls[0].data["tekst"] == "Ruub: stappen -, hartslag 61-69 bpm"

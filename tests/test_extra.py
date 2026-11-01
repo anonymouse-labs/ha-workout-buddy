@@ -15,7 +15,7 @@ TEXT1 = "Outdoor Walk · 120 min · 9.32 km · 650 kcal · 100 bpm"
 COORD = "custom_components.workout_buddy.coordinator"
 
 
-def _entry(source: dict | None = None, **options) -> MockConfigEntry:
+def _entry(source: dict | None = None, components: tuple = ("steps",), **options) -> MockConfigEntry:
     return MockConfigEntry(
         domain=DOMAIN,
         options={"delay": 0, **options},
@@ -25,7 +25,7 @@ def _entry(source: dict | None = None, **options) -> MockConfigEntry:
                 title="Ruub",
                 unique_id="ruub",
                 data={
-                    "components": ["steps"],
+                    "components": list(components),
                     "entity_steps": "sensor.ruub_steps",
                     "entity_heart_rate": "sensor.ruub_hr",
                     "daily_time": "20:00:00",

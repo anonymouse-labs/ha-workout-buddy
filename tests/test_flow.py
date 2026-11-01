@@ -27,6 +27,9 @@ async def test_flow_person_and_sources(hass: HomeAssistant) -> None:
     result = await hass.config_entries.flow.async_configure(result["flow_id"], OPTIONS)
     assert result["type"] is FlowResultType.CREATE_ENTRY
     entry_id = result["result"].entry_id
+    options = result["result"].options
+    assert options["send_text"] is True and options["chart_parts"] == ["numbers", "curves", "bars"]
+    assert options["daily_curves"] == ["heart_rate"]
     configure = hass.config_entries.subentries.async_configure
 
     flow = await _sub(hass, entry_id, "workout_source")  # a source needs a person first

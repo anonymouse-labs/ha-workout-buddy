@@ -40,6 +40,11 @@ from .const import (
     CONF_PERSON,
     CONF_RECIPIENT,
     CONF_SEND_IMAGES,
+    CONF_SEND_TEXT,
+    CONF_CHART_PARTS,
+    CONF_DAILY_CURVES,
+    CHART_PARTS,
+    DEFAULT_DAILY_CURVES,
     CONF_SEND_SERVICE,
     CONF_SOURCE_TYPE,
     DAILY_JOINT,
@@ -117,6 +122,9 @@ class WorkoutBuddy:
         self.delay = int(o.get(CONF_DELAY, DEFAULT_DELAY))
         self.history_size = int(o.get(CONF_HISTORY, DEFAULT_HISTORY))
         self.send_images: bool = o.get(CONF_SEND_IMAGES, False)
+        self.send_text: bool = o.get(CONF_SEND_TEXT, True)
+        self.chart_parts: set[str] = set(o.get(CONF_CHART_PARTS, CHART_PARTS))
+        self.daily_curves: list[str] = list(o.get(CONF_DAILY_CURVES, DEFAULT_DAILY_CURVES))
         self.compare_average: bool = o.get(CONF_COMPARE_AVG, False)
         self.daily_mode: str = o.get(CONF_DAILY_MODE, DAILY_PER_PERSON)
         self.joint_time = dt_util.parse_time(o.get(CONF_JOINT_TIME, DEFAULT_JOINT_TIME))
@@ -293,7 +301,7 @@ class WorkoutBuddy:
         if record is None:
             _LOGGER.debug("Duplicate workout %s ignored", workout.key)
             return
-        if self.send_images:
+        if self.send_images and "curves" in self.chart_parts:
             record["hr"] = await self._workout_curve(self.persons[source.person], workout)
         await self.store.async_save()
         self.notify_entities()
@@ -330,7 +338,11 @@ class WorkoutBuddy:
         whatsapp_notifier.send_message as `image`; other channels send text only.
         """
         domain, _, name = self.send_service.partition(".")
-        text = "\n".join(x for x in (f"{emoji} {title}", body, footer) if x)
+        if not (domain == "script" or self.send_service == "whatsapp_notifier.send_message"):
+            image = None  # other channels only take text, so keep the text
+        if image and not self.send_text:
+            body = footer = ""  # the chart says it all
+        text = "\n".join(x for x in (f"{emoji} {title}" if body or footer or not image else "", body, footer) if x)
         recipient = self.recipient
         if domain == "script":
             data: dict[str, Any] = {
@@ -428,6 +440,7 @@ class WorkoutBuddy:
                 hr_now,
                 hr_prev,
                 self.lang,
+                self.chart_parts,
             ),
         )
         ok = await self._send(EMOJI_WORKOUT, title, body, image=image)
@@ -509,16 +522,20 @@ class WorkoutBuddy:
         points = [((t - start).total_seconds() / 60, v) for t, v in raw if start <= t <= end]
         return [list(p) for p in self._downsample(points, CURVE_POINTS)]
 
-    async def _day_curves(self, people: list[Person]) -> dict[str, list[tuple[float, float]]]:
-        """Heart rate since local midnight per person as (hour, bpm)."""
+    async def _day_series(self, person: Person, component: str) -> list[tuple[float, float]]:
+        """Samples since local midnight as (hour, value), in km / kcal where relevant."""
+        entity_id = person.entities.get(component)
+        if not entity_id:
+            return []
         midnight = dt_util.start_of_local_day()
-        curves = {}
-        for person in people:
-            if entity_id := person.entities.get("heart_rate"):
-                raw = await self._history(entity_id, midnight, dt_util.utcnow())
-                points = [((dt_util.as_local(t) - midnight).total_seconds() / 3600, v) for t, v in raw]
-                curves[person.name] = self._downsample(points, 96)
-        return curves
+        state = self.hass.states.get(entity_id)
+        unit = str(state.attributes.get("unit_of_measurement") or "").lower() if state else ""
+        factor = {
+            "distance": DISTANCE.get(unit or "km", 1),
+            "active_kcal": ENERGY.get(unit or "kcal", 1),
+        }.get(component, 1)
+        raw = await self._history(entity_id, midnight, dt_util.utcnow())
+        return [((dt_util.as_local(t) - midnight).total_seconds() / 3600, v * factor) for t, v in raw]
 
     @staticmethod
     def _subtitle(record: Record) -> str:
@@ -564,13 +581,28 @@ class WorkoutBuddy:
         )
         if not people:
             return False
-        values = {p.name: self.daily_values(p) for p in people}
+        charts = self.send_images and "curves" in self.chart_parts
+        wanted = {"heart_rate"} if any("heart_rate" in p.components for p in people) else set()
+        if charts:
+            wanted |= set(self.daily_curves)
+        series = {m: {p.name: await self._day_series(p, m) for p in people} for m in wanted}
+        values: dict[str, dict[str, Any]] = {}
+        for p in people:
+            values[p.name] = self.daily_values(p)
+            if "heart_rate" in values[p.name]:
+                # the sensor state is just the latest reading: show the day's lowest and highest
+                bpm = [v for _, v in series.get("heart_rate", {}).get(p.name, [])]
+                values[p.name]["heart_rate"] = (min(bpm), max(bpm)) if bpm else None
         lines = [daily_line(name, vals, self.lang) for name, vals in values.items()]
         title, body = daily_message(lines, self.lang)
         day = dt_util.now().strftime("%d-%m")
-        curves = await self._day_curves(people) if self.send_images else {}
+        curves = {
+            m: {n: self._downsample(s, 96) for n, s in series[m].items()}
+            for m in self.daily_curves
+            if charts and m in series
+        }
         image = await self._chart(
-            "daily", lambda: daily_chart(values, curves, self.lang, day)
+            "daily", lambda: daily_chart(values, curves, self.lang, day, self.chart_parts)
         )
         ok = await self._send(EMOJI_DAILY, title, body, image=image)
         if ok:

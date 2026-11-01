@@ -36,13 +36,25 @@ def test_workout_chart_nothing_to_show() -> None:
     assert workout_chart("x", "y", [("a", Workout(type="Run"))]) == b""
 
 
-def test_daily_chart() -> None:
+def test_daily_chart_parts() -> None:
     rows = {
-        "Ruub": {"steps": 8420, "distance": 6.1, "heart_rate": 73, "resting_heart_rate": 63},
-        "Demi": {"steps": 7903, "distance": 5.4, "heart_rate": 65, "resting_heart_rate": None},
+        "Ruub": {"steps": 8420, "heart_rate": (52, 141), "resting_heart_rate": 63},
+        "Demi": {"steps": 7903, "heart_rate": None, "resting_heart_rate": None},
     }
-    day = {"Ruub": [(h, 70 + h) for h in range(0, 20)], "Demi": []}
-    with_curve = _png(daily_chart(rows, day, "nl", "01-11"))
-    without = _png(daily_chart(rows, None, "nl", "01-11"))
-    assert with_curve.height > without.height
+    hr = {"Ruub": [(h, 70 + h) for h in range(0, 20)], "Demi": []}
+    steps = {"Ruub": [(h, h * 400) for h in range(0, 20)], "Demi": [(h, h * 300) for h in range(0, 20)]}
+    numbers = _png(daily_chart(rows, None, "nl", "01-11"))
+    one_curve = _png(daily_chart(rows, {"heart_rate": hr}, "nl", "01-11"))
+    two_curves = _png(daily_chart(rows, {"heart_rate": hr, "steps": steps}, "nl", "01-11"))
+    assert numbers.height < one_curve.height < two_curves.height
+    only_curves = _png(daily_chart(rows, {"heart_rate": hr}, "nl", "01-11", ("curves",)))
+    assert only_curves.height == one_curve.height - 2 * 78  # no number rows
+    assert daily_chart(rows, {"heart_rate": hr}, "nl", "01-11", ()) == b""
     assert daily_chart({"A": {"steps": None}}) == b""
+
+
+def test_workout_chart_parts() -> None:
+    only_numbers = _png(workout_chart("W", "d", ENTRIES, CURVE, CURVE, "nl", ("numbers",)))
+    everything = _png(workout_chart("W", "d", ENTRIES, CURVE, CURVE, "nl"))
+    assert only_numbers.height < everything.height
+    assert workout_chart("W", "d", ENTRIES, CURVE, CURVE, "nl", ()) == b""

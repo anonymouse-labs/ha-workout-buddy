@@ -78,7 +78,7 @@ def _sleep(minutes: float, lang: str) -> str:
     return f"{h} {STR[lang]['hour']} {m} min"
 
 
-def daily_line(name: str, values: Mapping[str, float | None], lang: str) -> str:
+def daily_line(name: str, values: Mapping[str, float | tuple[float, float] | None], lang: str) -> str:
     """'Name: 8.420 stappen, 6,1 km, hartslag 73 bpm, rust -'. Missing values show '-'."""
     parts = []
     for component, value in values.items():
@@ -87,6 +87,8 @@ def daily_line(name: str, values: Mapping[str, float | None], lang: str) -> str:
             parts.append(missing)
         elif component == "distance":
             parts.append(template.format(v=num(value, 1, lang)))
+        elif isinstance(value, tuple):  # lowest-highest of the day
+            parts.append(template.format(v=f"{num(value[0], 0, lang)}-{num(value[1], 0, lang)}"))
         elif component == "sleep":
             parts.append(template.format(v=_sleep(value, lang)))
         else:

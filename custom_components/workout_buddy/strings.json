@@ -13,7 +13,10 @@
           "daily_mode": "Daily overview",
           "joint_time": "Joint overview time",
           "joint_deadline": "Latest time (wait until everyone has synced)",
-          "send_images": "Send a chart image (stored in /config/www/workout_buddy)"
+          "send_images": "Send a chart image (stored in /config/www/workout_buddy)",
+          "send_text": "Also send the text (turn off to send only the chart)",
+          "chart_parts": "What goes in the chart",
+          "daily_curves": "Curves in the daily chart"
         }
       }
     },
@@ -34,7 +37,10 @@
           "daily_mode": "Daily overview",
           "joint_time": "Joint overview time",
           "joint_deadline": "Latest time (wait until everyone has synced)",
-          "send_images": "Send a chart image (stored in /config/www/workout_buddy)"
+          "send_images": "Send a chart image (stored in /config/www/workout_buddy)",
+          "send_text": "Also send the text (turn off to send only the chart)",
+          "chart_parts": "What goes in the chart",
+          "daily_curves": "Curves in the daily chart"
         }
       }
     }
@@ -168,6 +174,21 @@
         "sensor": "Sensor with attributes",
         "event": "Event",
         "text": "Text sensor"
+      }
+    },
+    "chart_parts": {
+      "options": {
+        "numbers": "Key numbers",
+        "curves": "Line charts (heart rate, steps, ...)",
+        "bars": "Bars of the last workouts"
+      }
+    },
+    "daily_curves": {
+      "options": {
+        "heart_rate": "Heart rate",
+        "steps": "Steps",
+        "distance": "Distance",
+        "active_kcal": "Active kcal"
       }
     },
     "duration_unit": {

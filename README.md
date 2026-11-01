@@ -81,10 +81,17 @@ Vorige keer: +1,2 km, +8 min, tempo 20 s/km sneller, gem. hartslag -3 bpm
 
 ### Grafiek als afbeelding
 
-Zet **Stuur een grafiek als afbeelding** aan in de opties.
+Alles hieronder stel je in bij de opties.
+
+| Optie | Wat het doet |
+| --- | --- |
+| Stuur een grafiek als afbeelding | Aan of uit. Standaard uit |
+| Stuur ook de tekst | Uit = alleen de grafiek (zonder tekst eronder). Een kanaal dat geen afbeeldingen aankan, krijgt altijd de tekst |
+| Wat komt er in de grafiek | Kerncijfers, lijngrafieken en/of staafjes van de laatste workouts |
+| Lijngrafieken in het dagoverzicht | Kies uit hartslag, stappen, afstand en actieve kcal. Elke keuze wordt een eigen lijngrafiek over de dag, een lijn per persoon |
 
 - **Workout:** een samenvattingskaart in Strava-stijl. Bovenaan de kerncijfers (afstand, tijd, tempo, kcal, gemiddelde hartslag) met eronder het verschil met de vorige keer. Daaronder de hartslag tijdens de workout als lijn, met de vorige workout van hetzelfde type erachter in grijs, en onderaan staafjes van de laatste 6 workouts.
-- **Dagoverzicht:** de cijfers per persoon (stappen, afstand, actieve kcal, hartslag) en de hartslag over de dag als lijn, een kleur per persoon.
+- **Dagoverzicht:** de cijfers per persoon en de gekozen lijngrafieken over de dag. Bij hartslag staan de **laagste en hoogste** hartslag van die dag (uit de geschiedenis), niet de laatste meting. Zonder geschiedenis staat er `-`.
 
 De lijnen komen uit de geschiedenis (recorder) van je hartslagsensor. Daarvoor moet je bij de persoon een **hartslagsensor** hebben ingevuld. Zonder die sensor, of zonder recorder, blijven de kerncijfers en de staafjes en ontbreekt de lijn. De hartslagcurve van elke workout wordt bij het opslaan bewaard, dus de vergelijking met een vorige workout blijft werken ook als de recorder die data al heeft opgeruimd. Heeft je bron geen starttijd, dan wordt aangenomen dat de workout net klaar is.
 

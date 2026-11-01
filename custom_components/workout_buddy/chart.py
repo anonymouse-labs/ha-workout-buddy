@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 import io
 import math
 
@@ -27,7 +27,7 @@ TEXT = {
         "distance": "Afstand", "time": "Tijd", "pace": "Tempo", "kcal": "Kcal", "avg_hr": "Gem. hartslag",
         "speed": "Snelheid (km/u)", "hr_bars": "Hartslag (bpm)", "dist_bars": "Afstand (km)",
         "hr_title": "Hartslag tijdens de workout", "hr_day": "Hartslag over de dag",
-        "daily": "Dagoverzicht", "steps": "Stappen", "km": "Afstand (km)", "active_kcal": "Actieve kcal",
+        "daily": "Dagoverzicht", "hr_range": "Hartslag min-max", "steps_day": "Stappen over de dag", "distance_day": "Afstand over de dag (km)", "active_kcal_day": "Actieve kcal over de dag", "heart_rate_day": "Hartslag over de dag", "steps": "Stappen", "km": "Afstand (km)", "active_kcal": "Actieve kcal",
         "sleep": "Slaap", "heart_rate": "Hartslag", "resting_heart_rate": "Rust",
     },
     "en": {
@@ -36,7 +36,7 @@ TEXT = {
         "distance": "Distance", "time": "Time", "pace": "Pace", "kcal": "Kcal", "avg_hr": "Avg. heart rate",
         "speed": "Speed (km/h)", "hr_bars": "Heart rate (bpm)", "dist_bars": "Distance (km)",
         "hr_title": "Heart rate during the workout", "hr_day": "Heart rate over the day",
-        "daily": "Daily overview", "steps": "Steps", "km": "Distance (km)", "active_kcal": "Active kcal",
+        "daily": "Daily overview", "hr_range": "Heart rate min-max", "steps_day": "Steps over the day", "distance_day": "Distance over the day (km)", "active_kcal_day": "Active kcal over the day", "heart_rate_day": "Heart rate over the day", "steps": "Steps", "km": "Distance (km)", "active_kcal": "Active kcal",
         "sleep": "Sleep", "heart_rate": "Heart rate", "resting_heart_rate": "Resting",
     },
 }  # fmt: skip
@@ -79,6 +79,13 @@ def _nice_step(span: float, target: int) -> float:
     return math.ceil(raw)
 
 
+def _round_step(span: float, target: int) -> float:
+    """1, 2, 2.5 or 5 times a power of ten: tidy grid lines for any magnitude."""
+    raw = span / target
+    mag = 10 ** math.floor(math.log10(raw))
+    return next(m * mag for m in (1, 2, 2.5, 5, 10) if raw <= m * mag)
+
+
 def _legend(c: Canvas, right: float, y: float, items: Sequence[tuple[str, RGB]]) -> None:
     x = right
     for label, color in reversed(items):
@@ -95,13 +102,18 @@ def _line_chart(
     lines: Sequence[tuple[Series, RGB, RGB | None]],
     x_ticks: Sequence[tuple[float, str]],
     x_range: tuple[float, float],
+    *,
+    zero_based: bool = False,
+    lang: str = "nl",
 ) -> None:
     """Lines (series, colour, fill tint) on shared axes with horizontal grid lines."""
     x0, y0, x1, y1 = box
-    left, bottom = x0 + 40, y1 - 22
+    left, bottom = x0 + 52, y1 - 22
     values = [v for series, _, _ in lines for _, v in series]
     lo, hi = math.floor(min(values) / 5) * 5 - 5, math.ceil(max(values) / 5) * 5 + 5
-    step = _nice_step(hi - lo, 4)
+    if zero_based:
+        lo, hi = 0, max(max(values), 1)
+    step = _round_step(hi - lo, 4)
     lo = math.floor(lo / step) * step
     hi = math.ceil(hi / step) * step
 
@@ -114,7 +126,7 @@ def _line_chart(
     v = lo
     while v <= hi:
         c.line([(left, py(v)), (x1, py(v))], GRID, 1)
-        c.text((left - 8, py(v)), f"{v:.0f}", 12, MUTED, "rm")
+        c.text((left - 8, py(v)), num(v, 0 if step >= 1 else 1, lang), 12, MUTED, "rm")
         v += step
     for x, label in x_ticks:
         c.text((px(x), bottom + 6), label, 12, MUTED, "mt")
@@ -180,6 +192,7 @@ def workout_chart(
     hr_now: Series = (),
     hr_prev: Series = (),
     lang: str = "nl",
+    parts: Collection[str] = ("numbers", "curves", "bars"),
 ) -> bytes:
     """Summary card: key numbers with the difference from last time, the heart rate curve
     laid over the previous workout's, and bars for the last workouts. Entries are oldest
@@ -187,9 +200,9 @@ def workout_chart(
     t = TEXT[lang]
     current = entries[-1][1]
     previous = entries[-2][1] if len(entries) > 1 else None
-    kpis = _kpis(current, previous, lang)
+    kpis = _kpis(current, previous, lang) if "numbers" in parts else []
     width, pad = 900, 28
-    show_curve = len(hr_now) >= 2
+    show_curve = len(hr_now) >= 2 and "curves" in parts
     colors = [OTHER] * (len(entries) - 1) + [ACCENT]
     panels = [
         (t["dist_bars"], [w.distance for _, w in entries], 2),
@@ -197,7 +210,7 @@ def workout_chart(
         (t["hr_bars"], [w.avg_hr for _, w in entries], 0),
     ]  # fmt: skip
     panels = [p for p in panels if any(v is not None for v in p[1])]
-    show_bars = len(entries) > 1 and bool(panels)
+    show_bars = len(entries) > 1 and bool(panels) and "bars" in parts
 
     height = 124 + (84 if kpis else 0) + (250 if show_curve else 0) + (230 if show_bars else 0)
     if not (kpis or show_curve or show_bars):
@@ -245,48 +258,62 @@ def _frange(start: float, stop: float, step: float) -> list[float]:
 
 
 def daily_chart(
-    rows: Mapping[str, Mapping[str, float | None]],
-    hr_day: Mapping[str, Series] | None = None,
+    rows: Mapping[str, Mapping[str, float | tuple[float, float] | None]],
+    curves: Mapping[str, Mapping[str, Series]] | None = None,
     lang: str = "nl",
     day: str = "",
+    parts: Collection[str] = ("numbers", "curves"),
 ) -> bytes:
-    """Plain numbers per person and, when available, the heart rate over the day."""
+    """Numbers per person and one line chart per selected metric over the day."""
     t = TEXT[lang]
-    hr_day = hr_day or {}
-    metrics = [m for m in ("steps", "distance", "active_kcal", "sleep", "heart_rate", "resting_heart_rate")
-               if any(r.get(m) is not None for r in rows.values())]  # fmt: skip
-    lines = [(s, PEOPLE[i % len(PEOPLE)], None) for i, (name, s) in enumerate(hr_day.items()) if len(s) >= 2]
-    if not metrics and not lines:
+    metrics = (
+        [m for m in ("steps", "distance", "active_kcal", "sleep", "heart_rate", "resting_heart_rate")
+         if any(r.get(m) is not None for r in rows.values())]
+        if "numbers" in parts else []
+    )  # fmt: skip
+    panels = [
+        (m, by)
+        for m, by in (curves or {}).items()
+        if "curves" in parts and any(len(s) >= 2 for s in by.values())
+    ]
+    if not metrics and not panels:
         return b""
     width, pad, name_w = 900, 28, 120
-    height = 90 + len(rows) * 78 + (260 if lines else 0)
+    height = 90 + (len(rows) * 78 if metrics else 0) + len(panels) * 270
     c = Canvas(width, height)
     c.text((pad, 24), f"{t['daily']} {day}".strip(), 26)
-    tile = (width - 2 * pad - name_w) / max(len(metrics), 1)
     y = 84
-    for i, (name, values) in enumerate(rows.items()):
-        color = PEOPLE[i % len(PEOPLE)]
-        c.dot(pad + 6, y + 18, 6, color)
-        c.text((pad + 20, y + 8), name, 18)
-        for j, metric in enumerate(metrics):
-            v = values.get(metric)
-            if v is None:
-                text = "-"
-            elif metric == "distance":
-                text = f"{num(v, 1, lang)} km"
-            elif metric == "sleep":
-                text = f"{num(v / 60, 1, lang)} u" if lang == "nl" else f"{num(v / 60, 1, lang)} h"
-            elif metric in ("heart_rate", "resting_heart_rate"):
-                text = f"{num(v, 0, lang)} bpm"
-            else:
-                text = num(v, 0, lang)
-            x = pad + name_w + j * tile
-            c.text((x, y), t["km"].split(" (")[0] if metric == "distance" else t[metric], 12, MUTED)
-            c.text((x, y + 18), text, 24)
-        y += 78
-    if lines:
-        c.text((pad, y + 6), t["hr_day"], 15, MUTED)
-        _legend(c, width - pad, y + 6, [(n, PEOPLE[i % len(PEOPLE)]) for i, (n, s) in enumerate(hr_day.items()) if len(s) >= 2])
-        ticks = [(h, f"{h:02d}") for h in range(0, 25, 6)]
-        _line_chart(c, (pad, y + 34, width - pad, y + 254), lines, ticks, (0, 24))
+    if metrics:
+        tile = (width - 2 * pad - name_w) / len(metrics)
+        for i, (name, values) in enumerate(rows.items()):
+            c.dot(pad + 6, y + 18, 6, PEOPLE[i % len(PEOPLE)])
+            c.text((pad + 20, y + 8), name, 18)
+            for j, metric in enumerate(metrics):
+                v = values.get(metric)
+                if v is None:
+                    text = "-"
+                elif isinstance(v, tuple):
+                    text = f"{num(v[0], 0, lang)}-{num(v[1], 0, lang)} bpm"
+                elif metric == "distance":
+                    text = f"{num(v, 1, lang)} km"
+                elif metric == "sleep":
+                    text = f"{num(v / 60, 1, lang)} {'u' if lang == 'nl' else 'h'}"
+                elif metric == "resting_heart_rate":
+                    text = f"{num(v, 0, lang)} bpm"
+                else:
+                    text = num(v, 0, lang)
+                label = t["hr_range"] if metric == "heart_rate" else t["km"].split(" (")[0] if metric == "distance" else t[metric]
+                x = pad + name_w + j * tile
+                c.text((x, y), label, 12, MUTED)
+                c.text((x, y + 18), text, 22 if isinstance(v, tuple) else 24)
+            y += 78
+    for metric, by in panels:
+        people = [(PEOPLE[i % len(PEOPLE)], n, s) for i, (n, s) in enumerate(by.items()) if len(s) >= 2]
+        c.text((pad, y + 6), t[f"{metric}_day"], 15, MUTED)
+        _legend(c, width - pad, y + 6, [(n, col) for col, n, _ in people])
+        lines = [(s, col, None) for col, _, s in people]
+        _line_chart(c, (pad, y + 34, width - pad, y + 254), lines,
+                    [(h, f"{h:02d}") for h in range(0, 25, 6)], (0, 24),
+                    zero_based=metric != "heart_rate", lang=lang)  # fmt: skip
+        y += 270
     return c.png()
