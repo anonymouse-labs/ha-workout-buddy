@@ -236,9 +236,13 @@ class SourceSubentryFlow(ConfigSubentryFlow):
     async def _detail(
         self, step_id: str, user_input: dict[str, Any] | None, selector: Any, key: str, *, mapped: bool
     ) -> SubentryFlowResult:
+        errors: dict[str, str] = {}
         if user_input is not None:
             data = {k: v for k, v in {**self._data, **user_input}.items() if v not in ("", None)}
-            return self.async_create_entry(title=data[CONF_NAME], data=data)
+            if mapped and not any(data.get(f"map_{f}") for f in FIELDS):
+                errors["base"] = "no_mapping"
+            else:
+                return self.async_create_entry(title=data[CONF_NAME], data=data)
         fields: dict[Any, Any] = {vol.Required(key): selector}
         if mapped:
             for field in FIELDS:
@@ -246,4 +250,6 @@ class SourceSubentryFlow(ConfigSubentryFlow):
             fields[vol.Required(CONF_DURATION_UNIT, default="min")] = _select(["s", "min", "h"], CONF_DURATION_UNIT)
             fields[vol.Required(CONF_DISTANCE_UNIT, default="km")] = _select(["m", "km", "mi"], CONF_DISTANCE_UNIT)
             fields[vol.Required(CONF_ENERGY_UNIT, default="kcal")] = _select(["kcal", "kJ"], CONF_ENERGY_UNIT)
-        return self.async_show_form(step_id=step_id, data_schema=vol.Schema(fields))
+        return self.async_show_form(
+            step_id=step_id, data_schema=vol.Schema(fields), errors=errors
+        )

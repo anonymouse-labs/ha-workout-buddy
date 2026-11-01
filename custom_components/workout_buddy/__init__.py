@@ -72,7 +72,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         manager = _manager(hass)
         manager.store.clear(_person(manager, call.data.get(ATTR_PERSON)))
         await manager.store.async_save()
-        manager._notify_entities()  # noqa: SLF001
+        manager.notify_entities()
 
     async def dump_source(call: ServiceCall) -> None:
         await _manager(hass).async_dump(

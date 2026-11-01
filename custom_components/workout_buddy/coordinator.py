@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
+from functools import partial
 import logging
 from typing import Any
 
@@ -87,6 +88,7 @@ class Person:
 
 @dataclass(slots=True)
 class Source:
+    id: str
     name: str
     person: str
     type: str
@@ -120,6 +122,7 @@ class WorkoutBuddy:
         self._unsubs: list[Any] = []
         self._timers: dict[str, Any] = {}
         self._joint_pending = False
+        self._sending: set[str] = set()
         self._read_subentries()
 
     # -- setup ---------------------------------------------------------------
@@ -142,6 +145,7 @@ class WorkoutBuddy:
             elif sub.subentry_type == SUBENTRY_SOURCE:
                 self.sources.append(
                     Source(
+                        id=sub.subentry_id,
                         name=sub.title,
                         person=d[CONF_PERSON],
                         type=d[CONF_SOURCE_TYPE],
@@ -150,6 +154,14 @@ class WorkoutBuddy:
                         cfg=d,
                     )
                 )
+        orphans = [s for s in self.sources if s.person not in self.persons]
+        for source in orphans:
+            _LOGGER.warning(
+                "Source %s belongs to unknown person %s and is ignored",
+                source.name,
+                source.person,
+            )
+        self.sources = [s for s in self.sources if s.person in self.persons]
 
     async def async_start(self) -> None:
         await self.store.async_load()
@@ -158,13 +170,13 @@ class WorkoutBuddy:
             if source.type == SOURCE_EVENT and source.event_type:
                 self._unsubs.append(
                     hass.bus.async_listen(
-                        source.event_type, lambda ev, s=source: self._on_event(s, ev)
+                        source.event_type, partial(self._on_event, source)
                     )
                 )
             elif source.entity_id:
                 self._unsubs.append(
                     async_track_state_change_event(
-                        hass, [source.entity_id], lambda ev, s=source: self._on_state(s, ev)
+                        hass, [source.entity_id], partial(self._on_state, source)
                     )
                 )
         if self.daily_mode == DAILY_PER_PERSON:
@@ -172,9 +184,7 @@ class WorkoutBuddy:
                 self._unsubs.append(
                     async_track_time_change(
                         hass,
-                        lambda _now, p=person: hass.async_create_task(
-                            self.async_send_daily(p.name)
-                        ),
+                        partial(self._daily_cb, person.name),
                         hour=person.daily_time.hour,
                         minute=person.daily_time.minute,
                         second=0,
@@ -205,6 +215,10 @@ class WorkoutBuddy:
         )
 
     @callback
+    def _daily_cb(self, person: str, _now: datetime) -> None:
+        self.hass.async_create_task(self.async_send_daily(person))
+
+    @callback
     def async_stop(self) -> None:
         for unsub in self._unsubs:
             unsub()
@@ -214,7 +228,7 @@ class WorkoutBuddy:
         self._timers.clear()
 
     @callback
-    def _notify_entities(self) -> None:
+    def notify_entities(self) -> None:
         async_dispatcher_send(self.hass, SIGNAL_UPDATE.format(self.entry.entry_id))
 
     # -- workout sources -----------------------------------------------------
@@ -233,17 +247,17 @@ class WorkoutBuddy:
 
     def _schedule(self, source: Source, payload: Mapping[str, Any] | None = None) -> None:
         """Debounce per source and process after the configured delay."""
-        if cancel := self._timers.pop(source.name, None):
+        if cancel := self._timers.pop(source.id, None):
             cancel()
 
         async def process(_now: datetime | None = None) -> None:
-            self._timers.pop(source.name, None)
+            self._timers.pop(source.id, None)
             await self._process(source, payload)
 
         if self.delay <= 0:
             self.hass.async_create_task(process())
         else:
-            self._timers[source.name] = async_call_later(self.hass, self.delay, process)
+            self._timers[source.id] = async_call_later(self.hass, self.delay, process)
 
     def read_source(
         self, source: Source, payload: Mapping[str, Any] | None = None
@@ -261,14 +275,18 @@ class WorkoutBuddy:
     async def _process(self, source: Source, payload: Mapping[str, Any] | None) -> None:
         workout = self.read_source(source, payload)
         if workout is None:
-            _LOGGER.debug("Source %s gave no usable workout", source.name)
+            _LOGGER.warning(
+                "Source %s gave no usable workout. Check the field mapping, "
+                "see the workout_buddy.dump_source service",
+                source.name,
+            )
             return
         record = self.store.add(source.person, workout, self.history_size)
         if record is None:
             _LOGGER.debug("Duplicate workout %s ignored", workout.key)
             return
         await self.store.async_save()
-        self._notify_entities()
+        self.notify_entities()
         await self.async_send_workout(source.person, record)
 
     # -- sending -------------------------------------------------------------
@@ -325,6 +343,16 @@ class WorkoutBuddy:
 
     async def async_send_workout(self, person: str, record: Record) -> bool:
         """Send the summary for one stored workout; track attempts."""
+        guard = f"{person}|{record['key']}"
+        if guard in self._sending:
+            return False
+        self._sending.add(guard)
+        try:
+            return await self._send_workout(person, record)
+        finally:
+            self._sending.discard(guard)
+
+    async def _send_workout(self, person: str, record: Record) -> bool:
         previous = [Workout.from_dict(r["workout"]) for r in self.store.previous(person, record)]
         recent = previous[-AVERAGE_OVER:]
         title, body = workout_message(
@@ -349,7 +377,7 @@ class WorkoutBuddy:
                 MAX_ATTEMPTS,
             )
         await self.store.async_save()
-        self._notify_entities()
+        self.notify_entities()
         return ok
 
     async def _retry_unsent(self, _now: datetime | None = None) -> None:
@@ -393,7 +421,7 @@ class WorkoutBuddy:
             for p in people:
                 self._record_message(p.name, f"{title}\n{body}")
             await self.store.async_save()
-            self._notify_entities()
+            self.notify_entities()
         return ok
 
     # Dagsensoren resetten rond middernacht: joint_deadline is daarom een tijd op dezelfde dag.
@@ -403,7 +431,7 @@ class WorkoutBuddy:
             for component in person.components:
                 entity_id = person.entities.get(component)
                 state = self.hass.states.get(entity_id) if entity_id else None
-                if state is not None and state.last_updated < midnight:
+                if state is not None and max(state.last_updated, state.last_reported) < midnight:
                     return False
         return True
 
@@ -432,18 +460,18 @@ class WorkoutBuddy:
             if source.type == SOURCE_EVENT:
                 lines.append(
                     f"[{source.name}] event {source.event_type}: "
-                    f"{self.last_event.get(source.name, 'nog geen event ontvangen')}"
+                    f"{self.last_event.get(source.name, 'no event received yet')}"
                 )
             else:
                 lines.append(self._dump_entity(source.name, source.entity_id))
         if entity_id:
             lines.append(self._dump_entity(entity_id, entity_id))
-        return "\n".join(lines) or "Geen bron gevonden"
+        return "\n".join(lines) or "No source found"
 
     def _dump_entity(self, label: str, entity_id: str | None) -> str:
         state = self.hass.states.get(entity_id or "")
         if state is None:
-            return f"[{label}] {entity_id}: bestaat niet"
+            return f"[{label}] {entity_id}: does not exist"
         return (
             f"[{label}] {entity_id}: state={state.state!r} "
             f"last_updated={state.last_updated.isoformat()} "

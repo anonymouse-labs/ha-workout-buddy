@@ -135,6 +135,9 @@
           }
         }
       },
+      "error": {
+        "no_mapping": "Fill in at least one field."
+      },
       "abort": {
         "no_person": "Add a person first."
       }

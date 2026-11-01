@@ -135,6 +135,9 @@
           }
         }
       },
+      "error": {
+        "no_mapping": "Vul minstens één veld in."
+      },
       "abort": {
         "no_person": "Voeg eerst een persoon toe."
       }
