@@ -81,6 +81,7 @@ _LOGGER = logging.getLogger(__name__)
 EMOJI_DAILY = "📊"
 EMOJI_WORKOUT = "🏃"
 CHART_WORKOUTS = 6
+CURVE_POINTS = 60
 
 
 @dataclass(slots=True)
@@ -292,6 +293,8 @@ class WorkoutBuddy:
         if record is None:
             _LOGGER.debug("Duplicate workout %s ignored", workout.key)
             return
+        if self.send_images:
+            record["hr"] = await self._workout_curve(self.persons[source.person], workout)
         await self.store.async_save()
         self.notify_entities()
         await self.async_send_workout(source.person, record)
@@ -412,8 +415,20 @@ class WorkoutBuddy:
             (self._label(r), Workout.from_dict(r["workout"]))
             for r in [*self.store.previous(person, record), record][-CHART_WORKOUTS:]
         ]
+        previous_records = self.store.previous(person, record)
+        hr_now = [tuple(p) for p in record.get("hr", [])]
+        hr_prev = [tuple(p) for p in previous_records[-1].get("hr", [])] if previous_records else []
+        subtitle = self._subtitle(record)
         image = await self._chart(
-            f"workout_{slugify(person)}", lambda: workout_chart(title, entries, self.lang)
+            f"workout_{slugify(person)}",
+            lambda: workout_chart(
+                f"{record['workout'].get('type') or 'Workout'} · {person}",
+                subtitle,
+                entries,
+                hr_now,
+                hr_prev,
+                self.lang,
+            ),
         )
         ok = await self._send(EMOJI_WORKOUT, title, body, image=image)
         if ok:
@@ -431,6 +446,84 @@ class WorkoutBuddy:
         await self.store.async_save()
         self.notify_entities()
         return ok
+
+    async def _history(
+        self, entity_id: str, start: datetime, end: datetime
+    ) -> list[tuple[datetime, float]]:
+        """Numeric states of an entity from the recorder; empty when it is not available."""
+        if "recorder" not in self.hass.config.components:
+            return []
+        from homeassistant.components.recorder import get_instance, history  # noqa: PLC0415
+
+        try:
+            states = await get_instance(self.hass).async_add_executor_job(
+                partial(
+                    history.get_significant_states,
+                    self.hass,
+                    start,
+                    end,
+                    [entity_id],
+                    None,
+                    True,
+                    False,  # not only significant changes: we want every sample
+                    False,
+                    True,
+                )
+            )
+        except Exception:  # noqa: BLE001 - history is a nice-to-have
+            _LOGGER.debug("No history for %s", entity_id, exc_info=True)
+            return []
+        points = []
+        for state in states.get(entity_id, []):
+            if (value := parse_quantity(state.state)) is not None:
+                points.append((state.last_updated, value[0]))
+        return points
+
+    @staticmethod
+    def _downsample(points: list[tuple[float, float]], count: int) -> list[tuple[float, float]]:
+        """Average into at most `count` buckets over x."""
+        if len(points) <= count:
+            return points
+        lo, hi = points[0][0], points[-1][0]
+        width = (hi - lo) / count or 1
+        buckets: dict[int, list[tuple[float, float]]] = {}
+        for x, v in points:
+            buckets.setdefault(min(int((x - lo) / width), count - 1), []).append((x, v))
+        return [
+            (sum(x for x, _ in b) / len(b), sum(v for _, v in b) / len(b))
+            for _, b in sorted(buckets.items())
+        ]
+
+    async def _workout_curve(self, person: Person, workout: Workout) -> list[list[float]]:
+        """Heart rate during the workout as [minutes since start, bpm] points."""
+        entity_id = person.entities.get("heart_rate")
+        duration = timedelta(minutes=workout.duration) if workout.duration else None
+        # shortcut: without start/end the workout is assumed to have just finished
+        end = workout.end or (
+            workout.start + duration if workout.start and duration else None
+        ) or (dt_util.utcnow() if duration else None)
+        start = workout.start or (end - duration if end and duration else None)
+        if not (entity_id and start and end):
+            return []
+        raw = await self._history(entity_id, start, end)
+        points = [((t - start).total_seconds() / 60, v) for t, v in raw if start <= t <= end]
+        return [list(p) for p in self._downsample(points, CURVE_POINTS)]
+
+    async def _day_curves(self, people: list[Person]) -> dict[str, list[tuple[float, float]]]:
+        """Heart rate since local midnight per person as (hour, bpm)."""
+        midnight = dt_util.start_of_local_day()
+        curves = {}
+        for person in people:
+            if entity_id := person.entities.get("heart_rate"):
+                raw = await self._history(entity_id, midnight, dt_util.utcnow())
+                points = [((dt_util.as_local(t) - midnight).total_seconds() / 3600, v) for t, v in raw]
+                curves[person.name] = self._downsample(points, 96)
+        return curves
+
+    @staticmethod
+    def _subtitle(record: Record) -> str:
+        when = parse_dt(record["workout"].get("start") or record["received"])
+        return dt_util.as_local(when).strftime("%d-%m %H:%M") if when else ""
 
     @staticmethod
     def _label(record: Record) -> str:
@@ -474,12 +567,11 @@ class WorkoutBuddy:
         values = {p.name: self.daily_values(p) for p in people}
         lines = [daily_line(name, vals, self.lang) for name, vals in values.items()]
         title, body = daily_message(lines, self.lang)
-        image = None
-        if len(people) > 1:  # a chart is for comparing people
-            day = dt_util.now().strftime("%d-%m")
-            image = await self._chart(
-                "daily", lambda: daily_chart(values, self.lang, day)
-            )
+        day = dt_util.now().strftime("%d-%m")
+        curves = await self._day_curves(people) if self.send_images else {}
+        image = await self._chart(
+            "daily", lambda: daily_chart(values, curves, self.lang, day)
+        )
         ok = await self._send(EMOJI_DAILY, title, body, image=image)
         if ok:
             for p in people:

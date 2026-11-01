@@ -27,6 +27,7 @@ def _entry(source: dict | None = None, **options) -> MockConfigEntry:
                 data={
                     "components": ["steps"],
                     "entity_steps": "sensor.ruub_steps",
+                    "entity_heart_rate": "sensor.ruub_hr",
                     "daily_time": "20:00:00",
                 },
             ),

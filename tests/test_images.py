@@ -1,10 +1,14 @@
 """Chart images go along with the messages when enabled."""
 
 import os
+from datetime import timedelta
+from unittest.mock import patch
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import async_mock_service
+
+from custom_components.workout_buddy.coordinator import WorkoutBuddy
 
 from .test_extra import TEXT1, _entry, _setup
 
@@ -59,3 +63,37 @@ async def test_falls_back_to_text_when_image_is_rejected(hass: HomeAssistant) ->
     await hass.async_block_till_done()
     assert len(seen) == 2 and "image" not in seen[1]
     assert entry.runtime_data.store.latest("Ruub")["sent"] is True
+
+
+async def test_heart_rate_curve_is_stored_and_compared(hass: HomeAssistant) -> None:
+    async def fake_history(self, entity_id, start, end):
+        return [(start + timedelta(minutes=m), 90.0 + m) for m in range(0, 61, 5)]
+
+    calls = async_mock_service(hass, "whatsapp_notifier", "send_message")
+    entry = _entry(
+        send_service="whatsapp_notifier.send_message", recipient="1@g.us", send_images=True
+    )
+    with patch.object(WorkoutBuddy, "_history", fake_history):
+        await _setup(hass, entry)
+        for text in (TEXT1, TEXT2):
+            hass.states.async_set("sensor.w", text)
+            await hass.async_block_till_done()
+    store = entry.runtime_data.store
+    latest = store.latest("Ruub")
+    assert 2 <= len(latest["hr"]) <= 60 and latest["hr"][0][0] >= 0
+    assert store.previous("Ruub", latest)[-1]["hr"]  # the earlier workout kept its curve
+    assert os.path.getsize(calls[1].data["image"]) > 5000
+
+
+async def test_daily_image_with_day_curve(hass: HomeAssistant) -> None:
+    async def fake_history(self, entity_id, start, end):
+        return [(start + timedelta(hours=h), 60.0 + h) for h in range(0, 10)]
+
+    calls = async_mock_service(hass, "whatsapp_notifier", "send_message")
+    entry = _entry(
+        send_service="whatsapp_notifier.send_message", recipient="1@g.us", send_images=True
+    )
+    with patch.object(WorkoutBuddy, "_history", fake_history):
+        await _setup(hass, entry)
+        await hass.services.async_call("workout_buddy", "send_daily_summary", {}, blocking=True)
+    assert os.path.getsize(calls[0].data["image"]) > 5000

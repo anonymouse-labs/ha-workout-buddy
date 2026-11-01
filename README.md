@@ -81,15 +81,20 @@ Vorige keer: +1,2 km, +8 min, tempo 20 s/km sneller, gem. hartslag -3 bpm
 
 ### Grafiek als afbeelding
 
-Zet **Stuur een grafiek als afbeelding** aan in de opties. Bij elke workout komt er een PNG met staafjes van de laatste 6 workouts van hetzelfde type (afstand, snelheid, hartslag), waarbij de nieuwe groen is. Het dagoverzicht krijgt een PNG waarin de personen naast elkaar staan (stappen, afstand, hartslag, rusthartslag, slaap). Dat laatste alleen bij een gezamenlijk bericht of als je het voor iedereen verstuurt.
+Zet **Stuur een grafiek als afbeelding** aan in de opties.
+
+- **Workout:** een samenvattingskaart in Strava-stijl. Bovenaan de kerncijfers (afstand, tijd, tempo, kcal, gemiddelde hartslag) met eronder het verschil met de vorige keer. Daaronder de hartslag tijdens de workout als lijn, met de vorige workout van hetzelfde type erachter in grijs, en onderaan staafjes van de laatste 6 workouts.
+- **Dagoverzicht:** de cijfers per persoon (stappen, afstand, actieve kcal, hartslag) en de hartslag over de dag als lijn, een kleur per persoon.
+
+De lijnen komen uit de geschiedenis (recorder) van je hartslagsensor. Daarvoor moet je bij de persoon een **hartslagsensor** hebben ingevuld. Zonder die sensor, of zonder recorder, blijven de kerncijfers en de staafjes en ontbreekt de lijn. De hartslagcurve van elke workout wordt bij het opslaan bewaard, dus de vergelijking met een vorige workout blijft werken ook als de recorder die data al heeft opgeruimd. Heeft je bron geen starttijd, dan wordt aangenomen dat de workout net klaar is.
 
 De afbeeldingen komen in `/config/www/workout_buddy/` en worden steeds overschreven. Ze worden meegestuurd als:
 
-- `whatsapp_notifier.send_message`: veld `image` (vereist ha-whatsapp-notifier met afbeeldingen, bridge-add-on 0.3.0 of nieuwer);
+- `whatsapp_notifier.send_message`: veld `image` (vereist ha-whatsapp-notifier 0.3.0 of nieuwer en de bridge-add-on 0.3.0);
 - een script: veld `afbeelding` (pad), naast `emoji`, `kop`, `tekst` en `voetnoot`. Je script moet het zelf doorsturen;
 - andere kanalen: alleen tekst.
 
-Mislukt het tekenen, dan gaat het bericht gewoon als tekst. Pillow zit al in Home Assistant.
+Mislukt het tekenen of weigert het kanaal de afbeelding, dan gaat het bericht als tekst. Pillow zit al in Home Assistant.
 
 ### Entiteiten en services
 
@@ -155,7 +160,7 @@ The sensor and daily-sensor tables above list the known sources per platform. Me
 
 ### Chart image
 
-Turn on **Send a chart image** in the options. Each workout message gets a PNG with bars for the last 6 workouts of the same type (distance, speed, heart rate), the new one in green. The daily overview gets a PNG with people side by side. Images are written to `/config/www/workout_buddy/` and overwritten each time. They go to `whatsapp_notifier.send_message` as `image` (needs ha-whatsapp-notifier with image support) and to scripts as `afbeelding`; other channels get text only.
+Turn on **Send a chart image** in the options. A workout gets a summary card: key numbers with the difference from last time, the heart rate curve over the previous workout of the same type, and bars for the last 6. The daily overview shows the numbers per person and the heart rate over the day. The curves come from the recorder history of the heart rate sensor you set for the person, and each workout's curve is stored with it. Images are written to `/config/www/workout_buddy/` and go to `whatsapp_notifier.send_message` as `image` and to scripts as `afbeelding`; other channels get text only.
 
 ### Licentie / License
 
