@@ -140,3 +140,7 @@ A failed send never marks a workout as sent. It is retried every 15 minutes, 3 a
 Output is always minutes, km, kcal and bpm. `unknown`, `unavailable`, `NaN` and empty values are ignored; duplicates (same type and start) are sent once. Not sure which attributes your app exposes? Call `workout_buddy.dump_source`. The attribute names of third-party apps are not assumed; they are configurable.
 
 The sensor and daily-sensor tables above list the known sources per platform. Messages are in Dutch, or English when Home Assistant's language is `en`.
+
+### Licentie / License
+
+MIT, zie [LICENSE](LICENSE).
