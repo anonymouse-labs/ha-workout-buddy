@@ -1,0 +1,268 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Workout Buddy",
+        "description": "Choose how messages are sent. Persons and workout sources are added afterwards as subentries.",
+        "data": {
+          "send_service": "Send service (script.*, notify.* or whatsapp_notifier.send_message)",
+          "recipient": "Recipient (chat ID for whatsapp_notifier, notify entity for notify.send_message; may stay empty for scripts)",
+          "delay": "Delay before sending a workout (seconds)",
+          "history_size": "Workouts to keep per type",
+          "compare_average": "Also compare with the average of the last 5",
+          "daily_mode": "Daily overview",
+          "joint_time": "Joint overview time",
+          "joint_deadline": "Latest time (wait until everyone has synced)"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Workout Buddy is already set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Workout Buddy",
+        "data": {
+          "send_service": "Send service (script.*, notify.* or whatsapp_notifier.send_message)",
+          "recipient": "Recipient (chat ID for whatsapp_notifier, notify entity for notify.send_message; may stay empty for scripts)",
+          "delay": "Delay before sending a workout (seconds)",
+          "history_size": "Workouts to keep per type",
+          "compare_average": "Also compare with the average of the last 5",
+          "daily_mode": "Daily overview",
+          "joint_time": "Joint overview time",
+          "joint_deadline": "Latest time (wait until everyone has synced)"
+        }
+      }
+    }
+  },
+  "config_subentries": {
+    "person": {
+      "initiate_flow": {
+        "user": "Add person"
+      },
+      "entry_type": "Person",
+      "step": {
+        "user": {
+          "title": "Person",
+          "data": {
+            "name": "Name",
+            "components": "Parts of the daily overview",
+            "daily_time": "Time of the daily overview",
+            "entity_steps": "Steps sensor",
+            "entity_distance": "Distance sensor",
+            "entity_heart_rate": "Heart rate sensor",
+            "entity_resting_heart_rate": "Resting heart rate sensor",
+            "entity_active_kcal": "Active kcal sensor",
+            "entity_sleep": "Sleep sensor"
+          }
+        },
+        "reconfigure": {
+          "title": "Edit person",
+          "data": {
+            "components": "Parts of the daily overview",
+            "daily_time": "Time of the daily overview",
+            "entity_steps": "Steps sensor",
+            "entity_distance": "Distance sensor",
+            "entity_heart_rate": "Heart rate sensor",
+            "entity_resting_heart_rate": "Resting heart rate sensor",
+            "entity_active_kcal": "Active kcal sensor",
+            "entity_sleep": "Sleep sensor"
+          }
+        }
+      },
+      "abort": {
+        "already_configured": "This person already exists.",
+        "reconfigure_successful": "Saved."
+      }
+    },
+    "workout_source": {
+      "initiate_flow": {
+        "user": "Add workout source"
+      },
+      "entry_type": "Workout source",
+      "step": {
+        "user": {
+          "title": "Add workout source",
+          "data": {
+            "name": "Name",
+            "person": "Person",
+            "source_type": "Source type"
+          }
+        },
+        "sensor": {
+          "title": "Sensor with attributes",
+          "description": "Fill in the attribute name (sensor) or payload key (event) for each field. Use 'state' for the sensor state. Every field is optional. Use workout_buddy.dump_source to see the real attributes.",
+          "data": {
+            "entity_id": "Sensor",
+            "map_type": "Attribute: type",
+            "map_start": "Attribute: start",
+            "map_end": "Attribute: end",
+            "map_duration": "Attribute: duration",
+            "map_distance": "Attribute: distance",
+            "map_kcal": "Attribute: energy",
+            "map_avg_hr": "Attribute: average heart rate",
+            "map_max_hr": "Attribute: max heart rate",
+            "duration_unit": "Duration unit",
+            "distance_unit": "Distance unit",
+            "energy_unit": "Energy unit"
+          }
+        },
+        "event": {
+          "title": "Event",
+          "description": "Fill in the attribute name (sensor) or payload key (event) for each field. Use 'state' for the sensor state. Every field is optional. Use workout_buddy.dump_source to see the real attributes.",
+          "data": {
+            "event_type": "Event type",
+            "map_type": "Attribute: type",
+            "map_start": "Attribute: start",
+            "map_end": "Attribute: end",
+            "map_duration": "Attribute: duration",
+            "map_distance": "Attribute: distance",
+            "map_kcal": "Attribute: energy",
+            "map_avg_hr": "Attribute: average heart rate",
+            "map_max_hr": "Attribute: max heart rate",
+            "duration_unit": "Duration unit",
+            "distance_unit": "Distance unit",
+            "energy_unit": "Energy unit"
+          }
+        },
+        "text": {
+          "title": "Text sensor",
+          "description": "The state looks like: Outdoor Walk · 129 min · 10.52 km · 663 kcal · 97 bpm",
+          "data": {
+            "entity_id": "Sensor"
+          }
+        }
+      },
+      "abort": {
+        "no_person": "Add a person first."
+      }
+    }
+  },
+  "selector": {
+    "daily_mode": {
+      "options": {
+        "per_person": "Per person, at each person's time",
+        "joint": "One joint message at a fixed time",
+        "joint_wait": "One joint message once everyone has synced"
+      }
+    },
+    "components": {
+      "options": {
+        "steps": "Steps",
+        "distance": "Distance",
+        "heart_rate": "Heart rate",
+        "resting_heart_rate": "Resting heart rate",
+        "active_kcal": "Active kcal",
+        "sleep": "Sleep"
+      }
+    },
+    "source_type": {
+      "options": {
+        "sensor": "Sensor with attributes",
+        "event": "Event",
+        "text": "Text sensor"
+      }
+    },
+    "duration_unit": {
+      "options": {
+        "s": "s",
+        "min": "min",
+        "h": "h"
+      }
+    },
+    "distance_unit": {
+      "options": {
+        "m": "m",
+        "km": "km",
+        "mi": "mi"
+      }
+    },
+    "energy_unit": {
+      "options": {
+        "kcal": "kcal",
+        "kJ": "kJ"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "last_workout": {
+        "name": "Last workout"
+      },
+      "last_message": {
+        "name": "Last message sent"
+      }
+    },
+    "button": {
+      "send_daily": {
+        "name": "Send daily overview now"
+      }
+    }
+  },
+  "exceptions": {
+    "not_loaded": {
+      "message": "Workout Buddy is not loaded."
+    },
+    "unknown_person": {
+      "message": "Unknown person: {person}"
+    },
+    "no_workout": {
+      "message": "No workout found."
+    },
+    "send_failed": {
+      "message": "Sending the message failed. See the log."
+    }
+  },
+  "services": {
+    "send_daily_summary": {
+      "name": "Send daily overview",
+      "description": "Send the daily overview for one person, or everyone combined.",
+      "fields": {
+        "person": {
+          "name": "Person",
+          "description": "Leave empty for everyone."
+        }
+      }
+    },
+    "send_workout_summary": {
+      "name": "Send workout summary",
+      "description": "Send the summary of a workout again, with comparison.",
+      "fields": {
+        "person": {
+          "name": "Person",
+          "description": "Person."
+        },
+        "workout_key": {
+          "name": "Workout key",
+          "description": "The 'key' attribute of the last workout sensor. Empty means the latest."
+        }
+      }
+    },
+    "clear_history": {
+      "name": "Clear history",
+      "description": "Delete stored workouts.",
+      "fields": {
+        "person": {
+          "name": "Person",
+          "description": "Leave empty for everyone."
+        }
+      }
+    },
+    "dump_source": {
+      "name": "Dump source",
+      "description": "Write the raw state and attributes (or last event) to the log and a notification.",
+      "fields": {
+        "source": {
+          "name": "Source name",
+          "description": "Name of a configured source. Empty means all."
+        },
+        "entity_id": {
+          "name": "Sensor",
+          "description": "Any entity to inspect."
+        }
+      }
+    }
+  }
+}

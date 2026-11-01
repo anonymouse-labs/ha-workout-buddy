@@ -1,0 +1,268 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Workout Buddy",
+        "description": "Kies hoe berichten verstuurd worden. Personen en workout-bronnen voeg je daarna toe als subitems.",
+        "data": {
+          "send_service": "Verzendservice (script.*, notify.* of whatsapp_notifier.send_message)",
+          "recipient": "Ontvanger (chat-ID voor whatsapp_notifier, notify-entiteit voor notify.send_message; mag leeg bij scripts)",
+          "delay": "Vertraging voor een workoutbericht (seconden)",
+          "history_size": "Aantal workouts bewaren per type",
+          "compare_average": "Vergelijk ook met het gemiddelde van de laatste 5",
+          "daily_mode": "Dagoverzicht",
+          "joint_time": "Tijd gezamenlijk overzicht",
+          "joint_deadline": "Uiterlijke tijd (wacht tot iedereen gesynchroniseerd is)"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Workout Buddy is al ingesteld."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Workout Buddy",
+        "data": {
+          "send_service": "Verzendservice (script.*, notify.* of whatsapp_notifier.send_message)",
+          "recipient": "Ontvanger (chat-ID voor whatsapp_notifier, notify-entiteit voor notify.send_message; mag leeg bij scripts)",
+          "delay": "Vertraging voor een workoutbericht (seconden)",
+          "history_size": "Aantal workouts bewaren per type",
+          "compare_average": "Vergelijk ook met het gemiddelde van de laatste 5",
+          "daily_mode": "Dagoverzicht",
+          "joint_time": "Tijd gezamenlijk overzicht",
+          "joint_deadline": "Uiterlijke tijd (wacht tot iedereen gesynchroniseerd is)"
+        }
+      }
+    }
+  },
+  "config_subentries": {
+    "person": {
+      "initiate_flow": {
+        "user": "Persoon toevoegen"
+      },
+      "entry_type": "Persoon",
+      "step": {
+        "user": {
+          "title": "Persoon",
+          "data": {
+            "name": "Naam",
+            "components": "Onderdelen van het dagoverzicht",
+            "daily_time": "Tijd van het dagoverzicht",
+            "entity_steps": "Stappensensor",
+            "entity_distance": "Afstandssensor",
+            "entity_heart_rate": "Hartslagsensor",
+            "entity_resting_heart_rate": "Rusthartslagsensor",
+            "entity_active_kcal": "Actieve kcal-sensor",
+            "entity_sleep": "Slaapsensor"
+          }
+        },
+        "reconfigure": {
+          "title": "Persoon wijzigen",
+          "data": {
+            "components": "Onderdelen van het dagoverzicht",
+            "daily_time": "Tijd van het dagoverzicht",
+            "entity_steps": "Stappensensor",
+            "entity_distance": "Afstandssensor",
+            "entity_heart_rate": "Hartslagsensor",
+            "entity_resting_heart_rate": "Rusthartslagsensor",
+            "entity_active_kcal": "Actieve kcal-sensor",
+            "entity_sleep": "Slaapsensor"
+          }
+        }
+      },
+      "abort": {
+        "already_configured": "Deze persoon bestaat al.",
+        "reconfigure_successful": "Opgeslagen."
+      }
+    },
+    "workout_source": {
+      "initiate_flow": {
+        "user": "Workout-bron toevoegen"
+      },
+      "entry_type": "Workout-bron",
+      "step": {
+        "user": {
+          "title": "Workout-bron toevoegen",
+          "data": {
+            "name": "Naam",
+            "person": "Persoon",
+            "source_type": "Brontype"
+          }
+        },
+        "sensor": {
+          "title": "Sensor met attributen",
+          "description": "Vul per veld de attribuutnaam (sensor) of payload-sleutel (event) in. Gebruik 'state' voor de sensorstate. Elk veld is optioneel. Met workout_buddy.dump_source zie je de echte attributen.",
+          "data": {
+            "entity_id": "Sensor",
+            "map_type": "Attribuut: type",
+            "map_start": "Attribuut: start",
+            "map_end": "Attribuut: einde",
+            "map_duration": "Attribuut: duur",
+            "map_distance": "Attribuut: afstand",
+            "map_kcal": "Attribuut: energie",
+            "map_avg_hr": "Attribuut: gemiddelde hartslag",
+            "map_max_hr": "Attribuut: max. hartslag",
+            "duration_unit": "Eenheid duur",
+            "distance_unit": "Eenheid afstand",
+            "energy_unit": "Eenheid energie"
+          }
+        },
+        "event": {
+          "title": "Event",
+          "description": "Vul per veld de attribuutnaam (sensor) of payload-sleutel (event) in. Gebruik 'state' voor de sensorstate. Elk veld is optioneel. Met workout_buddy.dump_source zie je de echte attributen.",
+          "data": {
+            "event_type": "Event-type",
+            "map_type": "Attribuut: type",
+            "map_start": "Attribuut: start",
+            "map_end": "Attribuut: einde",
+            "map_duration": "Attribuut: duur",
+            "map_distance": "Attribuut: afstand",
+            "map_kcal": "Attribuut: energie",
+            "map_avg_hr": "Attribuut: gemiddelde hartslag",
+            "map_max_hr": "Attribuut: max. hartslag",
+            "duration_unit": "Eenheid duur",
+            "distance_unit": "Eenheid afstand",
+            "energy_unit": "Eenheid energie"
+          }
+        },
+        "text": {
+          "title": "Tekst-sensor",
+          "description": "De state ziet eruit als: Outdoor Walk · 129 min · 10.52 km · 663 kcal · 97 bpm",
+          "data": {
+            "entity_id": "Sensor"
+          }
+        }
+      },
+      "abort": {
+        "no_person": "Voeg eerst een persoon toe."
+      }
+    }
+  },
+  "selector": {
+    "daily_mode": {
+      "options": {
+        "per_person": "Per persoon, op de tijd van elke persoon",
+        "joint": "Eén gezamenlijk bericht op een vaste tijd",
+        "joint_wait": "Eén gezamenlijk bericht zodra iedereen gesynchroniseerd is"
+      }
+    },
+    "components": {
+      "options": {
+        "steps": "Stappen",
+        "distance": "Afstand",
+        "heart_rate": "Hartslag",
+        "resting_heart_rate": "Rusthartslag",
+        "active_kcal": "Actieve kcal",
+        "sleep": "Slaap"
+      }
+    },
+    "source_type": {
+      "options": {
+        "sensor": "Sensor met attributen",
+        "event": "Event",
+        "text": "Tekst-sensor"
+      }
+    },
+    "duration_unit": {
+      "options": {
+        "s": "s",
+        "min": "min",
+        "h": "u"
+      }
+    },
+    "distance_unit": {
+      "options": {
+        "m": "m",
+        "km": "km",
+        "mi": "mi"
+      }
+    },
+    "energy_unit": {
+      "options": {
+        "kcal": "kcal",
+        "kJ": "kJ"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "last_workout": {
+        "name": "Laatste workout"
+      },
+      "last_message": {
+        "name": "Laatste bericht verstuurd"
+      }
+    },
+    "button": {
+      "send_daily": {
+        "name": "Stuur dagoverzicht nu"
+      }
+    }
+  },
+  "exceptions": {
+    "not_loaded": {
+      "message": "Workout Buddy is niet geladen."
+    },
+    "unknown_person": {
+      "message": "Onbekende persoon: {person}"
+    },
+    "no_workout": {
+      "message": "Geen workout gevonden."
+    },
+    "send_failed": {
+      "message": "Het bericht versturen is mislukt. Zie het log."
+    }
+  },
+  "services": {
+    "send_daily_summary": {
+      "name": "Dagoverzicht versturen",
+      "description": "Stuur het dagoverzicht van één persoon, of van iedereen samen.",
+      "fields": {
+        "person": {
+          "name": "Persoon",
+          "description": "Leeg laten voor iedereen."
+        }
+      }
+    },
+    "send_workout_summary": {
+      "name": "Workoutsamenvatting versturen",
+      "description": "Stuur de samenvatting van een workout opnieuw, met vergelijking.",
+      "fields": {
+        "person": {
+          "name": "Persoon",
+          "description": "Persoon."
+        },
+        "workout_key": {
+          "name": "Workout-sleutel",
+          "description": "Het attribuut 'key' van de sensor Laatste workout. Leeg betekent de laatste."
+        }
+      }
+    },
+    "clear_history": {
+      "name": "Geschiedenis wissen",
+      "description": "Verwijder opgeslagen workouts.",
+      "fields": {
+        "person": {
+          "name": "Persoon",
+          "description": "Leeg laten voor iedereen."
+        }
+      }
+    },
+    "dump_source": {
+      "name": "Bron dumpen",
+      "description": "Schrijf de ruwe state en attributen (of het laatste event) naar het log en een melding.",
+      "fields": {
+        "source": {
+          "name": "Naam van de bron",
+          "description": "Naam van een ingestelde bron. Leeg betekent alle."
+        },
+        "entity_id": {
+          "name": "Sensor",
+          "description": "Een willekeurige entiteit om te bekijken."
+        }
+      }
+    }
+  }
+}

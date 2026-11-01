@@ -1,0 +1,32 @@
+send_daily_summary:
+  fields:
+    person:
+      example: Ruub
+      selector:
+        text:
+send_workout_summary:
+  fields:
+    person:
+      required: true
+      example: Ruub
+      selector:
+        text:
+    workout_key:
+      example: "outdoor walk|1767190800"
+      selector:
+        text:
+clear_history:
+  fields:
+    person:
+      example: Ruub
+      selector:
+        text:
+dump_source:
+  fields:
+    source:
+      example: Mijn wandelingen
+      selector:
+        text:
+    entity_id:
+      selector:
+        entity:

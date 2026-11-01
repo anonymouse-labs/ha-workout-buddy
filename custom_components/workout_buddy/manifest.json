@@ -1,0 +1,12 @@
+{
+  "domain": "workout_buddy",
+  "name": "Workout Buddy",
+  "codeowners": ["@Anonymouse0104"],
+  "config_flow": true,
+  "documentation": "https://github.com/Anonymouse0104/ha-workout-buddy",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/Anonymouse0104/ha-workout-buddy/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
