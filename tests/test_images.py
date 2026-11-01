@@ -3,6 +3,7 @@
 import os
 
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import async_mock_service
 
 from .test_extra import TEXT1, _entry, _setup
@@ -39,3 +40,22 @@ async def test_no_image_by_default(hass: HomeAssistant) -> None:
     hass.states.async_set("sensor.w", TEXT1)
     await hass.async_block_till_done()
     assert "afbeelding" not in calls[0].data
+
+
+async def test_falls_back_to_text_when_image_is_rejected(hass: HomeAssistant) -> None:
+    seen = []
+
+    async def strict(call) -> None:  # like a notifier that does not know `image`
+        seen.append(dict(call.data))
+        if "image" in call.data:
+            raise HomeAssistantError("extra keys not allowed")
+
+    hass.services.async_register("whatsapp_notifier", "send_message", strict)
+    entry = _entry(
+        send_service="whatsapp_notifier.send_message", recipient="1@g.us", send_images=True
+    )
+    await _setup(hass, entry)
+    hass.states.async_set("sensor.w", TEXT1)
+    await hass.async_block_till_done()
+    assert len(seen) == 2 and "image" not in seen[1]
+    assert entry.runtime_data.store.latest("Ruub")["sent"] is True

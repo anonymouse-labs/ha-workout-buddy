@@ -368,6 +368,14 @@ class WorkoutBuddy:
         try:
             await self.hass.services.async_call(domain, name, data, blocking=True)
         except Exception:  # noqa: BLE001 - a failing channel must never crash us
+            if image:
+                # e.g. an older whatsapp_notifier that does not know `image`: send the text
+                _LOGGER.warning(
+                    "Sending via %s with image failed, retrying as text only",
+                    self.send_service,
+                    exc_info=True,
+                )
+                return await self._send(emoji, title, body, footer)
             _LOGGER.exception("Sending via %s failed", self.send_service)
             return False
         return True
