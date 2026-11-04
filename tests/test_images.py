@@ -26,7 +26,9 @@ async def test_workout_image_for_whatsapp_notifier(hass: HomeAssistant) -> None:
         await hass.async_block_till_done()
     image = calls[1].data["image"]
     assert image.endswith("workout_ruub.png") and os.path.getsize(image) > 1000
-    assert "www" in image and calls[1].data["chat_id"] == "1@g.us"
+    assert "www" not in image and "media" not in image
+    assert hass.config.is_allowed_path(image)  # the chat service may read it
+    assert calls[1].data["chat_id"] == "1@g.us"
 
 
 async def test_script_gets_image_field(hass: HomeAssistant) -> None:
@@ -147,3 +149,17 @@ async def test_day_series_ignores_yesterdays_total(hass: HomeAssistant) -> None:
         heart = await manager._day_series(manager.persons["Ruub"], "heart_rate")
     assert [v for _, v in series] == [0.0, 300.0]
     assert len(heart) == 3  # heart rate is not a counter
+
+
+async def test_old_public_images_are_removed_and_allowlist_is_cleaned(hass: HomeAssistant) -> None:
+    old = hass.config.path("www", "workout_buddy")
+    os.makedirs(old)
+    for name in ("daily.png", "workout_ruub.png"):
+        open(os.path.join(old, name), "wb").close()
+    entry = _entry(send_images=True)
+    await _setup(hass, entry)
+    assert not os.path.exists(old)
+    image_dir = entry.runtime_data.image_dir
+    assert image_dir in hass.config.allowlist_external_dirs
+    await hass.config_entries.async_unload(entry.entry_id)
+    assert image_dir not in hass.config.allowlist_external_dirs

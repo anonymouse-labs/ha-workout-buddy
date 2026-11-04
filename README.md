@@ -100,7 +100,7 @@ Alles hieronder stel je in bij de opties.
 
 De lijnen komen uit de geschiedenis (recorder) van je hartslagsensor. Daarvoor moet je bij de persoon een **hartslagsensor** hebben ingevuld. Zonder die sensor, of zonder recorder, blijven de kerncijfers en de staafjes en ontbreekt de lijn. De hartslagcurve van elke workout wordt bij het opslaan bewaard, dus de vergelijking met een vorige workout blijft werken ook als de recorder die data al heeft opgeruimd. Heeft je bron geen starttijd, dan wordt aangenomen dat de workout net klaar is.
 
-De afbeeldingen komen in `/config/www/workout_buddy/` en worden steeds overschreven. Ze worden meegestuurd als:
+De afbeeldingen komen in `/config/workout_buddy/` (niet in `www`, want alles in `www` is zonder inloggen op te vragen) en worden steeds overschreven. Workout Buddy zet die map zelf op de lijst van toegestane mappen voor de verzendservice. Oudere bestanden in `/config/www/workout_buddy/` worden bij het starten verwijderd. Ze worden meegestuurd als:
 
 - `whatsapp_notifier.send_message`: veld `image` (vereist ha-whatsapp-notifier 0.3.0 of nieuwer en de bridge-add-on 0.3.0);
 - een script: veld `afbeelding` (pad), naast `emoji`, `kop`, `tekst` en `voetnoot`. Je script moet het zelf doorsturen;
@@ -176,7 +176,7 @@ The tables in the Dutch section above list the known sources per platform. Messa
 
 ### Chart image
 
-Turn on **Send a chart image** in the options. A workout gets a summary card: key numbers with the difference from last time, the heart rate curve over the previous workout of the same type, and bars for the last 6. The daily overview shows the numbers per person and the heart rate over the day. The curves come from the recorder history of the heart rate sensor you set for the person, and each workout's curve is stored with it. Images are written to `/config/www/workout_buddy/` and go to `whatsapp_notifier.send_message` as `image` and to scripts as `afbeelding`; other channels get text only.
+Turn on **Send a chart image** in the options. A workout gets a summary card: key numbers with the difference from last time, the heart rate curve over the previous workout of the same type, and bars for the last 6. The daily overview shows the numbers per person and the heart rate over the day. The curves come from the recorder history of the heart rate sensor you set for the person, and each workout's curve is stored with it. Images are written to `/config/workout_buddy/` (not `www`, which is served without login; older files in `www/workout_buddy` are removed on start) and go to `whatsapp_notifier.send_message` as `image` and to scripts as `afbeelding`; other channels get text only.
 
 ### Licentie / License
 

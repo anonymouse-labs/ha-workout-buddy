@@ -138,6 +138,8 @@ class WorkoutBuddy:
         self._unsubs: list[Any] = []
         self._timers: dict[str, Any] = {}
         self._joint_pending = False
+        # not under www/ (served without login) nor media/: the charts show names and health data
+        self.image_dir = hass.config.path(DOMAIN)
         self._sending: set[str] = set()
         self._read_subentries()
 
@@ -182,6 +184,10 @@ class WorkoutBuddy:
     async def async_start(self) -> None:
         await self.store.async_load()
         hass = self.hass
+        if self.send_images:
+            # the chat service only reads files from allowed folders; allow just ours
+            hass.config.allowlist_external_dirs.add(self.image_dir)
+            await hass.async_add_executor_job(self._remove_public_images)
         for source in self.sources:
             if source.type == SOURCE_EVENT and source.event_type:
                 self._unsubs.append(
@@ -234,8 +240,22 @@ class WorkoutBuddy:
     def _daily_cb(self, person: str, _now: datetime) -> None:
         self.hass.async_create_task(self.async_send_daily(person))
 
+    def _remove_public_images(self) -> None:
+        """Versions up to 0.3.2 wrote charts to www/, which is served without login."""
+        old = self.hass.config.path("www", DOMAIN)
+        if not os.path.isdir(old):
+            return
+        for name in os.listdir(old):
+            if name == "daily.png" or (name.startswith("workout_") and name.endswith(".png")):
+                os.remove(os.path.join(old, name))
+        try:
+            os.rmdir(old)
+        except OSError:
+            pass  # holds files that are not ours
+
     @callback
     def async_stop(self) -> None:
+        self.hass.config.allowlist_external_dirs.discard(self.image_dir)
         for unsub in self._unsubs:
             unsub()
         for cancel in self._timers.values():
@@ -310,10 +330,10 @@ class WorkoutBuddy:
     # -- sending -------------------------------------------------------------
 
     async def _chart(self, name: str, build: Callable[[], bytes]) -> str | None:
-        """Render a PNG under /config/www/workout_buddy; None when off, empty or failing."""
+        """Render a PNG under <config>/workout_buddy; None when off, empty or failing."""
         if not self.send_images:
             return None
-        path = self.hass.config.path("www", DOMAIN, f"{name}.png")
+        path = os.path.join(self.image_dir, f"{name}.png")
 
         def job() -> bool:
             if not (data := build()):

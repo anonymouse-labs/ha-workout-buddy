@@ -13,7 +13,7 @@
           "daily_mode": "Daily overview",
           "joint_time": "Joint overview time",
           "joint_deadline": "Latest time (wait until everyone has synced)",
-          "send_images": "Send a chart image (stored in /config/www/workout_buddy)",
+          "send_images": "Send a chart image (stored in /config/workout_buddy)",
           "send_text": "Also send the text (turn off to send only the chart)",
           "chart_parts": "What goes in the chart",
           "daily_curves": "Curves in the daily chart"
@@ -37,7 +37,7 @@
           "daily_mode": "Daily overview",
           "joint_time": "Joint overview time",
           "joint_deadline": "Latest time (wait until everyone has synced)",
-          "send_images": "Send a chart image (stored in /config/www/workout_buddy)",
+          "send_images": "Send a chart image (stored in /config/workout_buddy)",
           "send_text": "Also send the text (turn off to send only the chart)",
           "chart_parts": "What goes in the chart",
           "daily_curves": "Curves in the daily chart"
