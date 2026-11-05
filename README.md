@@ -18,8 +18,8 @@ De integratie is bron-onafhankelijk. De officiële Companion App heeft geen work
 
 ### Installatie
 
-1. HACS, Integraties, menu, Aangepaste repository: `https://github.com/Anonymouse0104/ha-workout-buddy`, categorie Integratie.
-2. Installeer Workout Buddy en herstart Home Assistant.
+1. HACS, zoek naar **Workout Buddy** en kies Downloaden. Staat hij er nog niet tussen (de lijst wordt periodiek bijgewerkt), voeg hem dan toe als aangepaste repository: HACS, menu, Aangepaste repository, `https://github.com/Anonymouse0104/ha-workout-buddy`, categorie Integratie.
+2. Herstart Home Assistant.
 3. Instellingen, Apparaten en services, Integratie toevoegen, Workout Buddy.
 4. Voeg via het menu van de integratie een **Persoon** toe en daarna een **Workout-bron** per persoon.
 
@@ -149,8 +149,8 @@ It is source-agnostic: the official Companion App has no workout sensor, so you 
 
 ### Install
 
-1. HACS, Integrations, menu, Custom repositories: `https://github.com/Anonymouse0104/ha-workout-buddy`, category Integration.
-2. Install Workout Buddy and restart Home Assistant.
+1. In HACS, search for **Workout Buddy** and choose Download. If it is not listed yet (the list is refreshed periodically), add it as a custom repository: HACS, menu, Custom repositories, `https://github.com/Anonymouse0104/ha-workout-buddy`, category Integration.
+2. Restart Home Assistant.
 3. Settings, Devices & services, Add integration, Workout Buddy.
 4. From the integration menu add a **Person**, then a **Workout source** per person.
 
