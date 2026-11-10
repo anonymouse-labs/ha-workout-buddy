@@ -3,3 +3,6 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 handoff.md
+CLAUDE.local.md
+CLAUDE.md
+.claude/
